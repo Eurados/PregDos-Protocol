@@ -7,6 +7,7 @@
 \usepackage{listings}
 \usepackage{titlesec}
 \usepackage{enumitem}
+\usepackage[sort&compress,numbers,square]{natbib}
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -26,7 +27,7 @@
 
 \section{Purpose}
 
-\textbf{PregDose} is a research tool designed to estimate and verify neutron dose to the fetus during proton therapy. It converts DICOM-based treatment planning data into input scripts for TOPAS Monte Carlo simulations, supporting accurate field-level neutron dose estimation.
+\textbf{PregDose} is a clinical tool designed to estimate neutron equivalent dose to the fetus during proton therapy. It converts DICOM-based treatment planning data into input scripts for TOPAS Monte Carlo simulations~\cite{perl_topas_2012}, supporting accurate field-level neutron dose estimation.
 
 \section{Overview}
 
@@ -181,5 +182,8 @@ This project is part of the \textbf{SONORA} initiative, funded by:
     \item 3D visualization of dose volumes
     \item GUI-based front-end for clinical researchers
 \end{itemize}
+
+\bibliographystyle{ieeetr}
+\bibliography{bibliography}
 
 \end{document}
