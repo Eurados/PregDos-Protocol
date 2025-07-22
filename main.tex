@@ -1,0 +1,185 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{enumitem}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{PregDose Protocol}
+\lhead{SONORA Project}
+\rfoot{\thepage}
+
+\titleformat{\section}{\normalfont\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries}{\thesubsection}{1em}{}
+
+\title{\textbf{PregDose: Protocol and Software Structure}\\Neutron Dose Estimation in Proton Therapy}
+\author{Developed as part of the SONORA Project \\ Grant Agreement No. 101061037}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Purpose}
+
+\textbf{PregDose} is a research tool designed to estimate and verify neutron dose to the fetus during proton therapy. It converts DICOM-based treatment planning data into input scripts for TOPAS Monte Carlo simulations, supporting accurate field-level neutron dose estimation.
+
+\section{Overview}
+
+PregDose:
+\begin{itemize}[topsep=0pt,itemsep=1pt]
+    \item Parses a full DICOM treatment study including CT, RTSTRUCT, RTPLAN, and RTDOSE.
+    \item Uses external beam model and SPR-to-material tables.
+    \item Outputs TOPAS-compatible input files for dose simulation.
+    \item Supports field-specific geometry generation and dose verification.
+\end{itemize}
+
+\section{System Requirements}
+\begin{itemize}
+    \item Python $\geq 3.8$
+    \item TOPAS (installed and configured)
+    \item Python packages: \texttt{pydicom}, etc. (see \texttt{setup.py})
+\end{itemize}
+
+\section{Installation}
+
+\begin{lstlisting}[language=bash]
+git clone https://github.com/your-org/pregdose.git
+cd pregdose
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+\end{lstlisting}
+
+When prompted, select ``yes'' to install all options.
+
+\section{Input Requirements}
+
+The input directory (\texttt{study\_dir}) must include:
+
+\begin{longtable}{|l|l|l|}
+\hline
+\textbf{Type} & \textbf{Description} & \textbf{Format} \\
+\hline
+CT Series & DICOM image data & CT\texttt{*.dcm} \\
+RS File & RTSTRUCT (structure set) & RS\texttt{*.dcm} \\
+RN File & RTPLAN (treatment plan) & RN\texttt{*.dcm} \\
+RD File & RTDOSE (TPS dose) & RD\texttt{*.dcm} \\
+\hline
+\end{longtable}
+
+Additional required files:
+
+\begin{longtable}{|l|l|l|}
+\hline
+\textbf{Parameter} & \textbf{Description} & \textbf{Example} \\
+\hline
+\texttt{-b} / \texttt{--beam-model} & Beam model CSV & \texttt{DCPT\_beam\_model\_\_v2.csv} \\
+\texttt{-s} / \texttt{--spr-to-material} & SPR to material table & \texttt{SPRtoMaterial\_\_Brain.txt} \\
+\texttt{-p} / \texttt{--beam-model-position} & Beam model distance to isocenter (mm) & \texttt{500.0} \\
+\hline
+\end{longtable}
+
+\section{Usage Example}
+
+\begin{lstlisting}[language=bash]
+PYTHONPATH=. python3 pregdos/main.py \
+  -v \
+  -b=res/beam_models/DCPT_beam_model__v2.csv \
+  -p 500.0 \
+  -s=res/spr_tables/SPRtoMaterial__Brain.txt \
+  res/test_studies/DCPT_headphantom/
+\end{lstlisting}
+
+Generates:
+\begin{itemize}
+    \item \texttt{topas\_field1.txt}
+    \item \texttt{topas\_field2.txt}
+    \item \texttt{topas\_field3.txt}
+\end{itemize}
+
+\section{Command-Line Options}
+
+\begin{lstlisting}[language=bash]
+usage: main.py [-h] [-b BM] [-s SPR_TO_MATERIAL_PATH] [-p BEAM_MODEL_POSITION]
+               [-f FIELD_NR] [-N NSTAT] [-v] [-V]
+               study_dir [output_base_path]
+\end{lstlisting}
+
+\begin{longtable}{|l|l|p{8cm}|}
+\hline
+\textbf{Option} & \textbf{Required} & \textbf{Description} \\
+\hline
+\texttt{study\_dir} & Yes & Path to input folder (CT, RS, RN, RD) \\
+\texttt{output\_base\_path} & No & Output base name (default: \texttt{topas.txt}) \\
+\texttt{-b} / \texttt{--beam-model} & Yes & Beam model CSV file \\
+\texttt{-s} / \texttt{--spr-to-material} & Yes & SPR-to-material mapping file \\
+\texttt{-p} / \texttt{--beam-model-position} & No & Beam model position (mm) \\
+\texttt{-f} / \texttt{--field} & No & Export only a single field \\
+\texttt{-N} / \texttt{--nstat} & No & Number of primary protons \\
+\texttt{-v} & No & Verbose output \\
+\texttt{-V} & No & Show version and exit \\
+\hline
+\end{longtable}
+
+\section{Output}
+
+PregDose produces one TOPAS input file per treatment field, including:
+\begin{itemize}
+    \item Voxelized CT geometry
+    \item Structure definitions (e.g. fetus ROI)
+    \item Field and beam configuration
+\end{itemize}
+
+\section{Internal Module Structure}
+
+\begin{longtable}{|l|p{10cm}|}
+\hline
+\textbf{Module} & \textbf{Functionality} \\
+\hline
+\texttt{pregdos/main.py} & CLI parsing and main execution logic \\
+\texttt{import\_rtstruct.py} & Handles RTSTRUCT parsing, extracts ROIs \\
+\texttt{import\_rtplan.py} & Parses RTPLAN and beam geometry \\
+\texttt{export\_study\_topas.py} & Converts study data to TOPAS geometry files \\
+\texttt{utils/} & Shared utilities and helpers \\
+\hline
+\end{longtable}
+
+\section{Dose Verification}
+
+PregDose reads RTDOSE (TPS dose grids) to allow for Monte Carlo vs TPS dose comparison. This supports:
+\begin{itemize}
+    \item QA for simulation accuracy
+    \item Clinical research into fetal dose metrics
+\end{itemize}
+
+\section{Fetus ROI Scoring}
+
+Ensure the fetus ROI is properly defined in the RTSTRUCT file. PregDose will:
+\begin{itemize}
+    \item Isolate the ROI using contour data
+    \item Define a scoring volume for neutron dose estimation
+\end{itemize}
+
+\section{Licensing and Acknowledgements}
+
+This project is part of the \textbf{SONORA} initiative, funded by:
+
+\begin{quote}
+\textit{The European Union’s EURATOM research and innovation programme under Grant Agreement No. 101061037 (PIANOFORTE – European Partnership for Radiation Protection Research).}
+\end{quote}
+
+\section{Planned Features}
+
+\begin{itemize}
+    \item GPU-accelerated simulation integration
+    \item Automated fetus detection and scoring
+    \item 3D visualization of dose volumes
+    \item GUI-based front-end for clinical researchers
+\end{itemize}
+
+\end{document}
