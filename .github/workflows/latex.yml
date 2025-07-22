@@ -1,4 +1,4 @@
-name: Build and Upload LaTeX PDF
+name: Build and Commit PDF to docs/
 
 on:
   push:
@@ -10,16 +10,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up LaTeX environment
+      - name: Compile LaTeX to PDF
         uses: xu-cheng/latex-action@v3
         with:
           root_file: main.tex
 
-      - name: Upload compiled PDF
-        uses: actions/upload-artifact@v4
-        with:
-          name: pregdose-pdf
-          path: main.pdf
+      - name: Copy to docs folder
+        run: |
+          mkdir -p docs
+          cp main.pdf docs/pregdose_protocol.pdf
+          echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PregDose PDF</title></head><body><h1>PregDose Protocol</h1><p><a href="pregdose_protocol.pdf">📄 Download PDF</a></p></body></html>' > docs/index.html
+
+      - name: Commit and push PDF and index.html
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add docs/
+          git commit -m "Update compiled PDF and index.html"
+          git push
