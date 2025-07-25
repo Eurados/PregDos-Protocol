@@ -27,29 +27,12 @@
 
 \section{Purpose}
 
-\textbf{PregDose} is a clinical tool designed to estimate neutron equivalent dose to the fetus during proton therapy. It converts DICOM-based treatment planning data into input scripts for TOPAS Monte Carlo simulations~\cite{perl_topas_2012}, supporting accurate field-level neutron dose estimation.
-
-\section{Overview}
-
-PregDose:
-\begin{itemize}[topsep=0pt,itemsep=1pt]
-    \item Parses a full DICOM treatment study including CT, RTSTRUCT, RTPLAN, and RTDOSE.
-    \item Uses external beam model and SPR-to-material tables.
-    \item Outputs TOPAS-compatible input files for dose simulation.
-    \item Supports field-specific geometry generation and dose verification.
-\end{itemize}
-
-\section{System Requirements}
-\begin{itemize}
-    \item Python $\geq 3.8$
-    \item TOPAS (installed and configured)
-    \item Python packages: \texttt{pydicom}, etc. (see \texttt{setup.py})
-\end{itemize}
+\textbf{PregDose} is a clinical tool intended for recalculating proton therapy plans for pregnant patients and estimate neutron equivalent dose to the fetus. It converts DICOM-based treatment planning data into input-files for the TOPAS Monte Carlo simulation tool~\cite{perl_topas_2012}, with the intend to provide clinicians quantitative radiation safety parameters to aid in the treatment planning process. 
 
 \section{Installation}
-
+The software tool can be installed from the GitHub repository directly \url{https://github.com/Eurados/pregdos} or as a Docker container at XXXX. When installing it from GitHub do:
 \begin{lstlisting}[language=bash]
-git clone https://github.com/your-org/pregdose.git
+git clone https://github.com/Eurados/pregdos
 cd pregdose
 python3 -m venv .venv
 source .venv/bin/activate
@@ -58,26 +41,36 @@ pip install -e .
 
 When prompted, select ``yes'' to install all options.
 
+
+\subsection{System Requirements}
+\begin{itemize}
+    \item Python $\geq 3.8$
+    \item TOPAS (installed and configured)
+    \item Python packages: \texttt{pydicom}, etc. (see \texttt{setup.py})
+\end{itemize}
+
 \section{Input Requirements}
 
-The input directory (\texttt{study\_dir}) must include:
+The input directory (\texttt{study\_dir}) must include the following set of files:
 
-\begin{longtable}{|l|l|l|}
+\begin{longtable}{|l|l|}
 \hline
-\textbf{Type} & \textbf{Description} & \textbf{Format} \\
+\textbf{Description} & \textbf{Format} \\
 \hline
-CT Series & DICOM image data & CT\texttt{*.dcm} \\
-RS File & RTSTRUCT (structure set) & RS\texttt{*.dcm} \\
-RN File & RTPLAN (treatment plan) & RN\texttt{*.dcm} \\
-RD File & RTDOSE (TPS dose) & RD\texttt{*.dcm} \\
+DICOM image data & CT\texttt{*.dcm} \\
+RTSTRUCT (structure set) & RS\texttt{*.dcm} \\
+RTPLAN (treatment plan) & RN\texttt{*.dcm} \\
+RTDOSE (TPS dose) & RD\texttt{*.dcm} \\
 \hline
 \end{longtable}
 
-Additional required files:
+Here the RTDOSE file can be omitted, but is recommended as the simulations also generate dose files for verifying with the plans from the TPS. The RS structure set, needs to include a structure with the name "fetus" such that relevant neutron specific quantities can be scored correctly. 
+
+Besides the required files it is recommended to include additional machine specific information to ensure the most reliable results. These include a beam model, CT or SPR to material conversion and the distance in which the beam model is defined from. Below you find a table on how to includes this in the program and examples of files/values with can be found in the GitHub repository. 
 
 \begin{longtable}{|l|l|l|}
 \hline
-\textbf{Parameter} & \textbf{Description} & \textbf{Example} \\
+\textbf{Flag} & \textbf{Description} & \textbf{Example} \\
 \hline
 \texttt{-b} / \texttt{--beam-model} & Beam model CSV & \texttt{DCPT\_beam\_model\_\_v2.csv} \\
 \texttt{-s} / \texttt{--spr-to-material} & SPR to material table & \texttt{SPRtoMaterial\_\_Brain.txt} \\
@@ -86,6 +79,8 @@ Additional required files:
 \end{longtable}
 
 \section{Usage Example}
+
+If you have installed PregDos through the GitHub page, you can try the example below to get experince with the program. Note that all necessary files are included in the GitHub repository.
 
 \begin{lstlisting}[language=bash]
 PYTHONPATH=. python3 pregdos/main.py \
@@ -96,11 +91,28 @@ PYTHONPATH=. python3 pregdos/main.py \
   res/test_studies/DCPT_headphantom/
 \end{lstlisting}
 
-Generates:
+This the example plan is a three field plan, the program generates and runs three simulations, one for each field.
 \begin{itemize}
     \item \texttt{topas\_field1.txt}
     \item \texttt{topas\_field2.txt}
     \item \texttt{topas\_field3.txt}
+\end{itemize}
+
+These files can be modified by the user prior to running, if needed.  
+
+\section{Output}
+
+PregDose produces one TOPAS input file per treatment field, including:
+\begin{itemize}
+    \item Voxelized CT geometry
+    \item Structure definitions (e.g. fetus ROI)
+    \item Field and beam configuration
+\end{itemize}
+
+PregDose reads RTDOSE (TPS dose grids) to allow for Monte Carlo vs TPS dose comparison. This supports:
+\begin{itemize}
+    \item QA for simulation accuracy
+    \item Clinical research into fetal dose metrics
 \end{itemize}
 
 \section{Command-Line Options}
@@ -127,14 +139,6 @@ usage: main.py [-h] [-b BM] [-s SPR_TO_MATERIAL_PATH] [-p BEAM_MODEL_POSITION]
 \hline
 \end{longtable}
 
-\section{Output}
-
-PregDose produces one TOPAS input file per treatment field, including:
-\begin{itemize}
-    \item Voxelized CT geometry
-    \item Structure definitions (e.g. fetus ROI)
-    \item Field and beam configuration
-\end{itemize}
 
 \section{Internal Module Structure}
 
@@ -150,21 +154,7 @@ PregDose produces one TOPAS input file per treatment field, including:
 \hline
 \end{longtable}
 
-\section{Dose Verification}
 
-PregDose reads RTDOSE (TPS dose grids) to allow for Monte Carlo vs TPS dose comparison. This supports:
-\begin{itemize}
-    \item QA for simulation accuracy
-    \item Clinical research into fetal dose metrics
-\end{itemize}
-
-\section{Fetus ROI Scoring}
-
-Ensure the fetus ROI is properly defined in the RTSTRUCT file. PregDose will:
-\begin{itemize}
-    \item Isolate the ROI using contour data
-    \item Define a scoring volume for neutron dose estimation
-\end{itemize}
 
 \section{Licensing and Acknowledgements}
 
